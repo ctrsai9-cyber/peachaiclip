@@ -31,4 +31,14 @@ export const allRoutes: Array<RouteRecordRaw & { meta?: RouteMetaType }> = [
         name: 'liveroom',
         component: () => import('@/views/pages/index-2/liveroom.vue'),
     },
+    {
+        path: '/signin',
+        name: 'signin',
+        component: () => import('@/views/pages/index-2/signin.vue'),
+    },
+    {
+        path: '/signup',
+        name: 'signup',
+        component: () => import('@/views/pages/index-2/signup.vue'),
+    },
 ];
