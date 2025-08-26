@@ -41,4 +41,14 @@ export const allRoutes: Array<RouteRecordRaw & { meta?: RouteMetaType }> = [
         name: 'signup',
         component: () => import('@/views/pages/index-2/signup.vue'),
     },
+    {
+        path: '/pointscharge',
+        name: 'pointscharge',
+        component: () => import('@/views/pages/index-2/pointscharge.vue'),
+    },
+    {
+        path: '/paycheck',
+        name: 'paycheck',
+        component: () => import('@/views/pages/index-2/paycheck.vue'),
+    },
 ];
