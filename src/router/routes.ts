@@ -51,4 +51,9 @@ export const allRoutes: Array<RouteRecordRaw & { meta?: RouteMetaType }> = [
         name: 'paycheck',
         component: () => import('@/views/pages/index-2/paycheck.vue'),
     },
+    {
+        path: '/chargerecord',
+        name: 'chargerecord',
+        component: () => import('@/views/pages/index-2/chargerecord.vue'),
+    },
 ];
