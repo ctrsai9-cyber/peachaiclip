@@ -19,17 +19,16 @@
     <!-- Center-screen animation for the triggered action -->
     <div v-if="currentActionAnimation" class="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
         <div class="tip-animation-container">
-            <!-- The icon of the action will be shown in the animation -->
             <div v-html="currentActionAnimation.icon" :class="['w-24 h-24 text-white', currentActionAnimation.animationClass]"></div>
             <div class="tip-animation-text">
-                Thanks to <span class="font-bold text-yellow-300">Me</span> for requesting a {{ currentActionAnimation.name }}!
+              Thanks <span class="font-bold text-yellow-300">{{ currentUser?.name || 'Me' }}</span> for requesting {{ currentActionAnimation.name }}!
             </div>
         </div>
     </div>
 
     <!-- UI Overlay -->
     <div class="absolute inset-0 flex flex-col justify-between p-4 text-white">
-      <UserInfo :user="user" />
+      <UserInfo :user="streamerInfo" />
       <GiftDisplay :gifts="giftQueue" />
       <div>
         <div class="flex items-end space-x-4">
@@ -37,7 +36,6 @@
             <CommentSection :comments="comments" />
           </div>
           <div class="flex-shrink-0">
-            <!-- The InteractionBar component from your Canvas -->
             <InteractionBar 
               @like="triggerLike" 
               @send-gift="triggerGift"
@@ -61,29 +59,93 @@
       </div>
     </div>
 
-    <!-- The new Actions Menu -->
+    <!-- The Actions Menu -->
     <TipsMenu 
-        v-if="isActionsMenuOpen" 
-        :tips="MOCK_ACTIONS"
-        @send-tip="handleSendAction"
-        @close="isActionsMenuOpen = false"
+      v-if="isActionsMenuOpen" 
+      :tips="MOCK_ACTIONS"
+      @send-tip="handleSendAction"
+      @close="isActionsMenuOpen = false"
     />
+
+    <!-- ================================================================== -->
+    <!-- ======================= AUTH MODAL (MODIFIED) ==================== -->
+    <!-- ================================================================== -->
+    <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center p-4 z-[100]" @click.self="showAuthModal = false">
+      <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-xs text-white mb-20">
+        <h2 class="text-2xl font-bold text-center text-yellow-300 mb-6">{{ isRegistering ? 'Create Account' : 'Welcome Back' }}</h2>
+
+        <!-- Error Message -->
+        <div v-if="authError" class="bg-red-500 text-white text-sm p-3 rounded-md mb-4 text-center">
+          {{ authError }}
+        </div>
+
+        <!-- Registration Form -->
+        <form v-if="isRegistering" @submit.prevent="handleRegister">
+          <div class="mb-4">
+            <label for="reg-username" class="block mb-2 text-sm font-medium">Username</label>
+            <input v-model="regUsername" id="reg-username" type="text" placeholder="Choose a username" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400">
+          </div>
+          <div class="mb-4">
+            <label for="reg-password" class="block mb-2 text-sm font-medium">Password</label>
+            <input v-model="regPassword" id="reg-password" type="password" placeholder="••••••••" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400">
+          </div>
+          <div class="mb-6">
+            <label for="confirm-password" class="block mb-2 text-sm font-medium">Confirm Password</label>
+            <input v-model="regConfirmPassword" id="confirm-password" type="password" placeholder="••••••••" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400">
+          </div>
+          <button type="submit" class="w-full bg-yellow-500 text-black font-bold py-2 rounded-lg hover:bg-yellow-400 transition-colors disabled:bg-gray-500 flex items-center justify-center" :disabled="isProcessingPayment">
+            <svg v-if="isProcessingPayment" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span v-if="isProcessingPayment">Processing Payment...</span>
+            <span v-else>Pay $1.99 & Register</span>
+          </button>
+        </form>
+
+        <!-- Login Form -->
+        <form v-else @submit.prevent="handleLogin">
+          <div class="mb-4">
+            <label for="username" class="block mb-2 text-sm font-medium">Username</label>
+            <input v-model="loginUsername" id="username" type="text" placeholder="Enter your username" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400">
+          </div>
+          <div class="mb-6">
+            <label for="password" class="block mb-2 text-sm font-medium">Password</label>
+            <input v-model="loginPassword" id="password" type="password" placeholder="••••••••" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400">
+          </div>
+          <button type="submit" class="w-full bg-yellow-500 text-black font-bold py-2 rounded-lg hover:bg-yellow-400 transition-colors">
+            Login
+          </button>
+        </form>
+
+        <!-- Toggle between forms -->
+        <p class="text-center text-sm text-gray-400 mt-6">
+          <span v-if="isRegistering">Already have an account? </span>
+          <span v-else>Don't have an account? </span>
+          <button @click="isRegistering = !isRegistering" class="font-semibold text-yellow-300 hover:underline">
+            {{ isRegistering ? 'Login' : 'Register Now' }}
+          </button>
+        </p>
+
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-// Assuming these child components exist in the same directory
+// Child components are assumed to be in the same directory or a sub-directory
 import UserInfo from './UserInfo.vue';
 import CommentSection from './CommentSection.vue';
 import InteractionBar from './InteractionBar.vue';
 import GiftDisplay from './GiftDisplay.vue';
-import TipsMenu from './components/TipsMenu.vue'; // This is the menu for the actions
+import TipsMenu from './components/TipsMenu.vue';
 
 // --- STATE ---
 const newCommentText = ref('');
 const currentVideoSrc = ref("https://storage.googleapis.com/peachai/AIgirl/JK%E5%B0%91%E5%A5%B3%E5%A4%95%E9%98%B3%E6%95%99%E5%AE%A4ASMR%E8%A7%86%E9%A2%91.mp4");
-const user = ref({ name: "AI Streamer", avatar: "...", viewers: 1888 });
+const streamerInfo = ref({ name: "AI Streamer", avatar: "...", viewers: 1888 });
 const comments = ref([]);
 const giftQueue = ref([]);
 const heartContainer = ref(null);
@@ -93,11 +155,27 @@ let commentInterval = null;
 const isActionsMenuOpen = ref(false);
 const currentActionAnimation = ref(null);
 
+// ==================================================================
+// =================== AUTH AND MODAL STATE =========================
+// ==================================================================
+const isLoggedIn = ref(false);
+const currentUser = ref(null);
+const showAuthModal = ref(false);
+const isRegistering = ref(false);
+const authError = ref(null);
+const isProcessingPayment = ref(false); // New state for payment processing
+// Login form state
+const loginUsername = ref('');
+const loginPassword = ref('');
+// Registration form state
+const regUsername = ref('');
+const regPassword = ref('');
+const regConfirmPassword = ref('');
+// ==================================================================
+
 // --- MOCK DATA ---
 const MOCK_GIFTS = [ { id: 1, name: "Rose", image: "..." } ];
 const MOCK_USERS = ["Big Spender", "VIP User"];
-
-// Data for the Action Menu - NOW WITH PRICES
 const MOCK_ACTIONS = [
     { 
       id: 'blowjob', 
@@ -141,22 +219,21 @@ const MOCK_ACTIONS = [
     },
 ];
 
-// Data for keyword detection
 const keywordActions = {
-  '漂亮': {
+  'pretty': {
     video: "https://storage.googleapis.com/peachai/AIgirl/%E5%A4%A7%E9%95%BF%E8%85%BF%E5%BE%A1%E5%A7%90%E8%88%9E%E8%B9%88.mp4",
-    message: "收到！为你播放一个漂亮的视频！"
+    message: "You got it! Here's a pretty video for you!"
   },
-  '跳舞': {
+  'dance': {
     video: "https://storage.googleapis.com/peachai/AIgirl/%E7%99%BD%E8%A1%A3JK%E5%A5%B3%E5%AD%A9%E5%AE%B6%E5%B1%85%E8%88%9E%E8%B9%88.mp4",
-    message: "来了来了，跳舞视频安排上！"
+    message: "Coming right up! Let's dance!"
   },
 };
 
 // --- METHODS ---
 const checkForKeywords = (commentText) => {
   for (const keyword in keywordActions) {
-    if (commentText.includes(keyword)) {
+    if (commentText.toLowerCase().includes(keyword)) {
       const action = keywordActions[keyword];
       currentVideoSrc.value = action.video;
       if (action.message) {
@@ -170,12 +247,65 @@ const checkForKeywords = (commentText) => {
 };
 
 const sendComment = () => {
+  if (!isLoggedIn.value) {
+    showAuthModal.value = true;
+    return;
+  }
+
   const text = newCommentText.value.trim();
   if (!text) return;
-  comments.value.push({ id: Date.now(), user: "Me", text: text });
+  
+  comments.value.push({ id: Date.now(), user: currentUser.value.name, text: text });
   checkForKeywords(text);
   newCommentText.value = '';
 };
+
+// ==================================================================
+// ==================== MODAL LOGIC METHODS =========================
+// ==================================================================
+const handleLoginSuccess = (userData) => {
+    isLoggedIn.value = true;
+    currentUser.value = userData;
+    showAuthModal.value = false;
+
+    comments.value.push({ id: Date.now(), user: 'System', text: `Welcome, ${userData.name}!`});
+
+    if (newCommentText.value.trim()) {
+        sendComment();
+    }
+};
+
+const handleLogin = () => {
+  authError.value = null;
+  if (!loginUsername.value || !loginPassword.value) {
+    authError.value = "Please fill in all fields.";
+    return;
+  }
+  console.log(`Logging in as ${loginUsername.value}`);
+  handleLoginSuccess({ name: loginUsername.value });
+};
+
+const handleRegister = () => {
+  authError.value = null;
+  if (!regUsername.value || !regPassword.value || !regConfirmPassword.value) {
+    authError.value = "Please fill in all fields.";
+    return;
+  }
+  if (regPassword.value !== regConfirmPassword.value) {
+    authError.value = "Passwords do not match.";
+    return;
+  }
+  
+  // Simulate payment processing
+  isProcessingPayment.value = true;
+  setTimeout(() => {
+    isProcessingPayment.value = false;
+    console.log(`Payment successful for user ${regUsername.value}`);
+    console.log(`Registering user ${regUsername.value}`);
+    handleLoginSuccess({ name: regUsername.value });
+  }, 2500); // 2.5 second delay for payment simulation
+};
+// ==================================================================
 
 const triggerLike = () => {
   if (!heartContainer.value) return;
@@ -210,12 +340,13 @@ const handleSendAction = (action) => {
     setTimeout(() => {
         currentActionAnimation.value = null;
     }, 3000);
-    comments.value.push({ id: Date.now(), user: "System", text: `Action requested: ${action.name}!` });
+    const requesterName = isLoggedIn.value ? currentUser.value.name : 'A user';
+    comments.value.push({ id: Date.now(), user: "System", text: `${requesterName} requested: ${action.name}!` });
 };
 
 onMounted(() => {
   comments.value.push({ id: Date.now(), user: "System", text: "Welcome to the interactive stream!" });
-  comments.value.push({ id: Date.now() + 1, user: "System", text: "试试发送“漂亮”或“跳舞”" });
+  comments.value.push({ id: Date.now() + 1, user: "System", text: "Try sending 'pretty' or 'dance'" });
 });
 
 onUnmounted(() => {
@@ -238,3 +369,4 @@ html, body, #app { height: 100%; width: 100%; margin: 0; padding: 0; overflow: h
 @keyframes slideInLeft { 0% { opacity: 0; transform: translateX(-100%); } 20% { opacity: 1; transform: translateX(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes launch { 0% { opacity: 0; transform: translateY(100%); } 30% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-100%); } }
 </style>
+
